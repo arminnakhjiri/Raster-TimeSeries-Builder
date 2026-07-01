@@ -1,56 +1,70 @@
-import glob
 import os
 import re
+import glob
 
 import numpy as np
 import rasterio
 
-# Input / Output
-input_folder = r"D:\path\to\input_folder"
+# Inputs
+input_folder = r"path/to/input_folder"
 output_tif = os.path.join(input_folder, "TimeSeries_Stack.tif")
 
 # Band to extract (1-based index)
 TARGET_BAND = 22
 
+# Find input files
 files = sorted(glob.glob(os.path.join(input_folder, "S2_Stack_*.tif")))
 
-if not files:
-    raise FileNotFoundError("No TIFF files found.")
+if len(files) == 0:
+    raise Exception("No TIFF files found.")
 
+# Read reference metadata
 with rasterio.open(files[0]) as src:
     meta = src.meta.copy()
+    height = src.height
+    width = src.width
+    crs = src.crs
+    transform = src.transform
     dtype = src.dtypes[TARGET_BAND - 1]
 
+# Extract target band
 stack = []
 band_names = []
 
-for file in files:
+for f in files:
 
-    match = re.search(r"(\d{8})", os.path.basename(file))
+    fname = os.path.basename(f)
 
-    if match is None:
-        print(f"Skipping {os.path.basename(file)} (date not found).")
+    m = re.search(r"(\d{8})", fname)
+
+    if m is None:
+        print(f"Skipping {fname} (no date found)")
         continue
 
-    date = match.group(1)
+    date_str = m.group(1)
 
-    with rasterio.open(file) as src:
-        stack.append(src.read(TARGET_BAND))
+    with rasterio.open(f) as src:
+        band = src.read(TARGET_BAND)
 
-    band_names.append(date)
-    print(f"Added: {date}")
+    stack.append(band)
+    band_names.append(date_str)
+
+    print(f"Added: {date_str}")
 
 stack = np.stack(stack)
 
-meta.update(
-    count=len(stack),
-    dtype=dtype
-)
+# Write output
+meta.update({
+    "count": len(stack),
+    "dtype": dtype
+})
 
 with rasterio.open(output_tif, "w", **meta) as dst:
-    for i, band in enumerate(stack, start=1):
-        dst.write(band, i)
-        dst.set_band_description(i, band_names[i - 1])
 
-print(f"\nCreated: {output_tif}")
-print(f"Number of bands: {len(stack)}")
+    for i in range(len(stack)):
+        dst.write(stack[i], i + 1)
+        dst.set_band_description(i + 1, band_names[i])
+
+print("\nFinished.")
+print(f"Output: {output_tif}")
+print(f"Bands: {len(stack)}")
