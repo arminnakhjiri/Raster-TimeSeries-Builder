@@ -99,10 +99,9 @@ MIT License
 ---
 
 ## Author
-
-**Armin Nakhjiri**
+**Armin Nakhjiri**  
 Remote Sensing Scientist
-✉️ [Nakhjiri.Armin@gmail.com](mailto:Nakhjiri.Armin@gmail.com)
+✉️ Nakhjiri.Armin@gmail.com  
 
 ---
 
